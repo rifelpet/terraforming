@@ -1,12 +1,52 @@
 <% iam_policies.each do |policy| -%>
   <%- version = iam_policy_version_of(policy) -%>
+
+data "aws_iam_policy_document" "<%= module_name_of(policy) %>" {
+<% version.document['Statement'].each do |statement| -%>
+  statement {
+<% if statement['Sid'] -%>
+    sid = "<%= statement['Sid'] %>"
+<% end -%>
+<% if statement['Effect'] != 'Allow' -%>
+    effect = "<%= statement['Effect'] %>"
+<% end -%>
+    actions = [
+<% statement['Action'].each do |act| -%>
+      "<%= act %>",
+<% end -%>
+    ]
+    resources = [
+<% statement['Resource'].each do |res| -%>
+      "<%= res.gsub(/\$\{/, '$${') %>",
+<% end -%>
+    ]
+<% statement['Condition'].each_pair do |k,v| -%>
+
+    condition {
+      test     = "<%= k %>"
+      variable = "<%= v.keys[0] %>"
+
+      values = [
+<% if v.values[0].is_a? String -%>
+        "<%= v.values[0] %>"
+<% else -%>
+<% v.values[0].each do |val| -%>
+        "<%= val %>"
+<% end -%>
+<% end -%>
+      ]
+    }
+<% end -%>
+  }
+<% end
+}
 resource "aws_iam_policy" "<%= module_name_of(policy) %>" {
     name        = "<%= policy.policy_name %>"
+<% if policy.path != '/' -%>
     path        = "<%= policy.path %>"
+<% end -%>
     description = "<%= iam_policy_description(policy) %>"
-    policy      = <<POLICY
-<%= prettify_policy(version.document, unescape: true) %>
-POLICY
+    policy      = "${data.aws_iam_policy_document.<%= module_name_of(policy) %>.json"
 }
 
 <% end -%>
