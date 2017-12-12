@@ -1,10 +1,46 @@
 <% iam_role_policies.each do |policy| -%>
+data "aws_iam_policy_document" "<%= unique_name(policy) %>_role_policy_document" {
+<% statements = JSON.parse(CGI.unescape(policy.policy_document))['Statement']
+(statements.is_a?(Hash) ? [statements] : statements).each do |statement| -%>
+  statement {
+<% if statement['Sid'] -%>
+    sid = "<%= statement['Sid'] %>"
+<% end -%>
+<% if statement['Effect'] != 'Allow' -%>
+    effect = "<%= statement['Effect'] %>"
+<% end -%>
+    actions = [
+<% Array(statement['Action']).each do |act| -%>
+      "<%= act %>",
+<% end -%>
+    ]
+    resources = [
+<% Array(statement['Resource']).each do |res| -%>
+      "<%= res.gsub(/\$\{/, '$${') %>",
+<% end -%>
+    ]
+<% if statement['Condition'] %>
+<% statement['Condition'].each_pair do |k,v| -%>
+
+    condition {
+      test     = "<%= k %>"
+      variable = "<%= v.keys[0] %>"
+
+      values = [
+<% Array(v.values[0]).each do |val| -%>
+        "<%= val %>"
+<% end -%>
+      ]
+    }
+<% end -%>
+<% end -%>
+  }
+<% end -%>
+}
 resource "aws_iam_role_policy" "<%= unique_name(policy) %>" {
     name   = "<%= policy.policy_name %>"
     role   = "<%= policy.role_name %>"
-    policy = <<POLICY
-<%= prettify_policy(policy.policy_document, unescape: true) %>
-POLICY
+    policy = "${data.aws_iam_policy_document.<%= unique_name(policy) %>_role_policy_document.json}"
 }
 
 <% end -%>

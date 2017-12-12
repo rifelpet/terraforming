@@ -1,4 +1,57 @@
 <% iam_roles.each do |role| -%>
+data "aws_iam_policy_document" "<%= module_name_of(role) %>_assume_role" {
+<% JSON.parse(CGI.unescape(role.assume_role_policy_document))['Statement'].each do |statement| -%>
+  statement {
+<% if statement['Sid'] -%>
+    sid = "<%= statement['Sid'] %>"
+<% end -%>
+<% if statement['Effect'] != 'Allow' -%>
+    effect = "<%= statement['Effect'] %>"
+<% end -%>
+    actions = [
+<% Array(statement['Action']).each do |act| -%>
+      "<%= act %>",
+<% end -%>
+    ]
+
+<% if statement['Principal']['AWS'] -%>
+    principals {
+      type        = "AWS"
+      identifiers = [
+<% Array(statement['Principal']['AWS']).each do |princ| -%>
+        "<%= princ %>",
+<% end -%>
+      ]
+    }
+<% end # if statement['Principal']['AWS'] -%>
+<% if statement['Principal']['Service'] -%>
+    principals {
+      type        = "Service"
+      identifiers = [
+<% Array(statement['Principal']['Service']).each do |princ| -%>
+        "<%= princ %>",
+<% end -%>
+      ]
+    }
+<% end # if statement['Principal']['Service'] -%>
+<% if statement['Condition'] -%>
+<% statement['Condition'].each_pair do |k,v| -%>
+
+    condition {
+      test     = "<%= k %>"
+      variable = "<%= v.keys[0] %>"
+
+      values = [
+<% Array(v.values[0]).each do |val| -%>
+        "<%= val %>",
+<% end -%>
+      ]
+    }
+<% end -%>
+<% end -%>
+  }
+<% end -%>
+}
 resource "aws_iam_role" "<%= module_name_of(role) %>" {
     name               = "<%= role.role_name %>"
 <% if role.path != '/' -%>
@@ -7,9 +60,7 @@ resource "aws_iam_role" "<%= module_name_of(role) %>" {
 <% if role.description -%>
     description        = "<%= role.description %>"
 <% end -%>
-    assume_role_policy = <<POLICY
-<%= prettify_policy(role.assume_role_policy_document, unescape: true) %>
-POLICY
+    assume_role_policy = "${data.aws_iam_policy_document.<%= module_name_of(role) %>_assume_role.json}"
 }
 
 <% end -%>
