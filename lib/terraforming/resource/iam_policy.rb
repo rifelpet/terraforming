@@ -16,7 +16,21 @@ module Terraforming
       end
 
       def tf
-        apply_template(@client, "tf/iam_policy")
+        hash = {}
+        iam_policies.each do |policy|
+          result = ERB.new(open(template_path('tf/iam_policy')).read, nil, "-").result(binding)
+          hash[policy.arn] = result
+        end
+        hash
+      end
+
+      def tf2
+        hash = {}
+        iam_policies.each do |policy|
+          result = ERB.new(open(template_path('tf/iam_policy')).read, nil, "-").result(binding)
+          hash[policy.arn] = result
+        end
+        hash
       end
 
       def tfstate

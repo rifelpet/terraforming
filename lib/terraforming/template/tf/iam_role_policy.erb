@@ -1,4 +1,3 @@
-<% iam_role_policies.each do |policy| -%>
 data "aws_iam_policy_document" "<%= unique_name(policy) %>_role_policy_document" {
 <% statements = JSON.parse(CGI.unescape(policy.policy_document))['Statement']
 (statements.is_a?(Hash) ? [statements] : statements).each do |statement| -%>
@@ -42,5 +41,3 @@ resource "aws_iam_role_policy" "<%= unique_name(policy) %>" {
     role   = "<%= policy.role_name %>"
     policy = "${data.aws_iam_policy_document.<%= unique_name(policy) %>_role_policy_document.json}"
 }
-
-<% end -%>

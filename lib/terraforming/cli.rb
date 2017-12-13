@@ -230,6 +230,103 @@ module Terraforming
       execute(Terraforming::Resource::SNSTopicSubscription, options)
     end
 
+    desc "mergeiam", "All IAM stuff merged into per-role .tf files"
+    def mergeiam
+      instance_profiles = Terraforming::Resource::IAMInstanceProfile.tf
+      roles = Terraforming::Resource::IAMRole.tf
+      rolepolicies = Terraforming::Resource::IAMRolePolicy.tf
+      rolepolicyattachments = Terraforming::Resource::IAMRolePolicyAttachment.tf
+      policies = Terraforming::Resource::IAMPolicy.tf
+
+      all_resources = Hash.new # hash of role_name to list of other stuff
+
+      roles.each_pair do |role_name, res_contents|
+        short_name = shorten(role_name)
+
+        if all_resources.has_key? short_name
+          all_resources[short_name] << res_contents
+        else
+          all_resources[short_name] = [res_contents]
+        end
+      end
+
+      instance_profiles.each do |profile_name, res_contents|
+        short_name = shorten(profile_name)
+        if all_resources.has_key? short_name
+          all_resources[short_name].concat(res_contents)
+        else
+          all_resources[short_name] = res_contents
+        end
+      end
+
+      rolepolicies.each_pair do |role_name, res_contents|
+        short_name = shorten(role_name)
+        if all_resources.has_key? short_name
+          all_resources[short_name].concat(res_contents)
+        else
+          all_resources[short_name] = res_contents
+        end
+      end
+
+
+      used_policies = []
+      rolepolicyattachments.each_pair do |role_policy_pair, rpa_contents|
+        role_name = role_policy_pair[0]
+        policy_name = role_policy_pair[1]
+        short_name = shorten(role_name)
+        if all_resources.has_key? short_name
+          all_resources[short_name] << rpa_contents
+        else
+          all_resources[short_name] = rpa_contents
+        end
+
+        if policies.has_key?(policy_name) and not used_policies.include?(policy_name)
+          all_resources[short_name] << policies[policy_name]
+          used_policies << policy_name
+        end
+      end
+
+      
+      policies.each_pair do |policy_name, policy_contents|
+        if used_policies.include? policy_name
+          next
+        end
+        short_name = shorten(policy_name)
+        short_name = short_name.gsub(/.*:policy\//, '').gsub(/\//, '_')
+        #puts "Found unused polciy #{policy_name} -> #{short_name} with contents #{policy_contents.length}"
+        all_resources[short_name] = [policy_contents]
+      end
+
+      all_resources.each_pair do |res_name, reses|
+        puts "#{reses.length}   #{res_name}"
+      end
+      all_resources.each_pair do |res_name, reses|
+        f = File.new("#{res_name}.tf", "w")
+        #puts "Writing #{reses.length} resources to #{res_name}"
+        reses.each do |res|
+          f.write(res)
+        end
+        f.close()
+      end
+    end
+
+    no_commands {
+      def shorten(name)
+        short_name = name.gsub('ec2-', '')
+        short_name = short_name.gsub('_role_policy_document', '')
+        short_name = short_name.gsub('_assume_role', '')
+        short_name = short_name.gsub('_policy_document', '')
+        short_name = short_name.gsub('-policy', '')
+        short_name = short_name.gsub('-role', '')
+        short_name = short_name.gsub('f_', '')
+        short_name = short_name.gsub(/_f_.*/, '')
+        short_name = short_name.gsub(/-\d{12}$/, '')
+        short_name = short_name.gsub(/_\d{13}$/, '')
+        short_name = short_name.gsub(/-default$/, '')
+        short_name      
+      end
+    }
+
     private
 
     def configure_aws(options)

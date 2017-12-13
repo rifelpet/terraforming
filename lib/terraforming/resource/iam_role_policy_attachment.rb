@@ -16,7 +16,12 @@ module Terraforming
       end
 
       def tf
-        apply_template(@client, "tf/iam_role_policy_attachment")
+        hash = {}
+        iam_role_policy_attachments.each do |attachment|
+          result = ERB.new(open(template_path('tf/iam_role_policy_attachment')).read, nil, "-").result(binding)
+          hash[[attachment[0], attachment[1]]] = result
+        end
+        hash
       end
 
       def tfstate

@@ -16,7 +16,17 @@ module Terraforming
       end
 
       def tf
-        apply_template(@client, "tf/iam_instance_profile")
+        hash = {}
+        iam_instance_profiles.each do |profile|
+          result = ERB.new(open(template_path('tf/iam_instance_profile')).read, nil, "-").result(binding)
+          name = profile.roles.length > 0 ? profile.roles[0].role_name : profile.instance_profile_name
+          if hash.has_key? name
+            hash[name] << result
+          else
+            hash[name] = [result]
+          end
+        end
+        hash
       end
 
       def tfstate

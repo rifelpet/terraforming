@@ -16,7 +16,14 @@ module Terraforming
       end
 
       def tf
-        apply_template(@client, "tf/iam_role")
+        hash = {}
+        iam_roles.each do |role|
+          result = ERB.new(open(template_path('tf/iam_role')).read, nil, "-").result(binding)
+          #puts "RESULT: #{result}"
+          hash[role.role_name] = result
+        end
+        # puts "HASH: #{hash}"
+        hash
       end
 
       def tfstate

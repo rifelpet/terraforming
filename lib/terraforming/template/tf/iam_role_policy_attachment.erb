@@ -1,7 +1,4 @@
-<% iam_role_policy_attachments.each do |attachment| -%>
 resource "aws_iam_role_policy_attachment" "<%= unique_name(attachment) %>" {
     role       = "<%= attachment[0] %>"
     policy_arn = "<%= attachment[1] %>"
 }
-<% end %>
-
