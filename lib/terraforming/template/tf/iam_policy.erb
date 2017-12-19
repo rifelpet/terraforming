@@ -8,16 +8,34 @@ data "aws_iam_policy_document" "<%= module_name_of(policy) %>_policy_document" {
 <% if statement['Effect'] != 'Allow' -%>
     effect = "<%= statement['Effect'] %>"
 <% end -%>
+<% if statement['Action'] -%>
     actions = [
 <% Array(statement['Action']).each do |act| -%>
       "<%= act %>",
 <% end -%>
     ]
+<% end -%>
+<% if statement['NotAction'] -%>
+    not_actions = [
+<% Array(statement['NotAction']).each do |act| -%>
+      "<%= act %>",
+<% end -%>
+    ]
+<% end -%>
+<% if statement['Resource'] -%>
     resources = [
 <% Array(statement['Resource']).each do |res| -%>
       "<%= res.gsub(/\$\{/, '$${') %>",
 <% end -%>
     ]
+<% end -%>
+<% if statement['NotResource'] -%>
+    not_resources = [
+<% Array(statement['NotResource']).each do |res| -%>
+      "<%= res.gsub(/\$\{/, '$${') %>",
+<% end -%>
+    ]
+<% end -%>
 <% if statement['Condition'] %>
 <% statement['Condition'].each_pair do |k,v| -%>
 

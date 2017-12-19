@@ -33,6 +33,16 @@ data "aws_iam_policy_document" "<%= module_name_of(role) %>_assume_role" {
       ]
     }
 <% end # if statement['Principal']['Service'] -%>
+<% if statement['Principal']['Federated'] -%>
+    principals {
+      type        = "Federated"
+      identifiers = [
+<% Array(statement['Principal']['Federated']).each do |princ| -%>
+        "<%= princ %>",
+<% end -%>
+      ]
+    }
+<% end # if statement['Principal']['Federated'] -%>
 <% if statement['Condition'] -%>
 <% statement['Condition'].each_pair do |k,v| -%>
 
